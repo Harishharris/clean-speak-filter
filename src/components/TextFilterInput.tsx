@@ -46,7 +46,7 @@ const TextFilterInput: React.FC<TextFilterInputProps> = ({
       }`}>
         <textarea
           id="text-input"
-          className={`text-input min-h-[8rem] resize-y ${
+          className={`text-input min-h-[8rem] resize-y text-foreground ${
             hasMatches ? 'border-destructive/20' : ''
           }`}
           value={value}
@@ -55,6 +55,7 @@ const TextFilterInput: React.FC<TextFilterInputProps> = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           aria-describedby="input-description"
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
         />
         
         {hasMatches && (
