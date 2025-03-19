@@ -1,5 +1,6 @@
 
 import { profanityList } from '@/data/profanityList';
+import { detectProfanity } from './aiProfanityDetection';
 
 /**
  * Filters profanity words from text and replaces them with asterisks
@@ -8,6 +9,14 @@ export function filterProfanity(text: string): {
   filteredText: string;
   wasFiltered: boolean;
   matches: string[];
+  aiDetection?: {
+    isProfane: boolean;
+    categories: {
+      label: string;
+      match: boolean;
+      probability: number;
+    }[];
+  };
 } {
   if (!text) {
     return { 
@@ -60,6 +69,34 @@ export function filterProfanity(text: string): {
     filteredText,
     wasFiltered,
     matches: [...new Set(matches)] // Remove duplicates
+  };
+}
+
+/**
+ * Enhanced filter that combines wordlist and AI approaches
+ */
+export async function enhancedFilterProfanity(text: string): Promise<{
+  filteredText: string;
+  wasFiltered: boolean;
+  matches: string[];
+  aiDetection: {
+    isProfane: boolean;
+    categories: {
+      label: string;
+      match: boolean;
+      probability: number;
+    }[];
+  };
+}> {
+  // First, use the traditional wordlist-based filtering
+  const wordlistResult = filterProfanity(text);
+  
+  // Then use AI-based detection
+  const aiResult = await detectProfanity(text);
+  
+  return {
+    ...wordlistResult,
+    aiDetection: aiResult
   };
 }
 

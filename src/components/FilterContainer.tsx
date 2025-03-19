@@ -4,21 +4,61 @@ import { motion } from 'framer-motion';
 import TextFilterInput from './TextFilterInput';
 import FilteredOutput from './FilteredOutput';
 import FilterHeader from './FilterHeader';
-import { filterProfanity } from '@/utils/profanityFilter';
+import { filterProfanity, enhancedFilterProfanity } from '@/utils/profanityFilter';
+import { loadToxicityModel } from '@/utils/aiProfanityDetection';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const FilterContainer: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [filteredResult, setFilteredResult] = useState({
     filteredText: '',
     wasFiltered: false,
-    matches: [] as string[]
+    matches: [] as string[],
+    aiDetection: {
+      isProfane: false,
+      categories: [] as { label: string; match: boolean; probability: number }[]
+    }
   });
+  const [isModelLoading, setIsModelLoading] = useState(true);
+  const [filterMethod, setFilterMethod] = useState<'wordlist' | 'enhanced'>('wordlist');
+
+  // Load the TensorFlow model when the component mounts
+  useEffect(() => {
+    const initModel = async () => {
+      try {
+        await loadToxicityModel();
+        setIsModelLoading(false);
+      } catch (error) {
+        console.error("Failed to load TensorFlow model:", error);
+        setIsModelLoading(false);
+      }
+    };
+    
+    initModel();
+  }, []);
 
   useEffect(() => {
     // Filter the text whenever inputText changes
-    const result = filterProfanity(inputText);
-    setFilteredResult(result);
-  }, [inputText]);
+    const runFilter = async () => {
+      if (filterMethod === 'wordlist' || isModelLoading) {
+        // Use traditional filtering if that's selected or if the model is still loading
+        const result = filterProfanity(inputText);
+        setFilteredResult({
+          ...result,
+          aiDetection: {
+            isProfane: false,
+            categories: []
+          }
+        });
+      } else {
+        // Use enhanced filtering with AI
+        const result = await enhancedFilterProfanity(inputText);
+        setFilteredResult(result);
+      }
+    };
+    
+    runFilter();
+  }, [inputText, filterMethod, isModelLoading]);
 
   return (
     <motion.div 
@@ -35,6 +75,15 @@ const FilterContainer: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
       >
+        <Tabs defaultValue="wordlist" className="mb-6" onValueChange={(value) => setFilterMethod(value as 'wordlist' | 'enhanced')}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="wordlist">Wordlist Filtering</TabsTrigger>
+            <TabsTrigger value="enhanced" disabled={isModelLoading}>
+              {isModelLoading ? 'Loading AI Model...' : 'AI-Enhanced Filtering'}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
         <TextFilterInput 
           value={inputText}
           onChange={setInputText}
@@ -44,6 +93,7 @@ const FilterContainer: React.FC = () => {
           filteredText={filteredResult.filteredText}
           wasFiltered={filteredResult.wasFiltered}
           matches={filteredResult.matches}
+          aiDetection={filteredResult.aiDetection}
         />
         
         <motion.div 
@@ -52,7 +102,9 @@ const FilterContainer: React.FC = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          Type text above to filter profanity and view the result
+          {filterMethod === 'enhanced' && !isModelLoading ? 
+            "Using TensorFlow.js AI model for enhanced profanity detection" : 
+            "Type text above to filter profanity and view the result"}
         </motion.div>
       </motion.div>
     </motion.div>
