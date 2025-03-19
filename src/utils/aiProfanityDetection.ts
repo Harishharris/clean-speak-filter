@@ -2,26 +2,47 @@
 import * as tf from '@tensorflow/tfjs';
 import * as toxicity from '@tensorflow-models/toxicity';
 
+// Explicitly register the CPU backend
+import '@tensorflow/tfjs-backend-cpu';
+
 // Model threshold for prediction confidence
 const THRESHOLD = 0.8;
 
 // We'll use this to store the loaded model to avoid reloading it every time
 let toxicityModel: toxicity.ToxicityClassifier | null = null;
+let modelLoadPromise: Promise<toxicity.ToxicityClassifier> | null = null;
 
 /**
  * Loads the toxicity model (if not already loaded)
  */
 export const loadToxicityModel = async (): Promise<toxicity.ToxicityClassifier> => {
+  // If we already have the model, return it
   if (toxicityModel) return toxicityModel;
+  
+  // If we're already loading the model, return the existing promise
+  if (modelLoadPromise) return modelLoadPromise;
   
   // Log the loading process
   console.log("Loading TensorFlow.js toxicity model...");
   
-  // Load the model with the toxicity labels we care about
-  toxicityModel = await toxicity.load(THRESHOLD, ['toxicity', 'identity_attack', 'insult', 'obscene', 'severe_toxicity', 'sexual_explicit', 'threat']);
+  // Set the backend to CPU explicitly
+  await tf.setBackend('cpu');
+  console.log("Using TensorFlow backend:", tf.getBackend());
   
-  console.log("TensorFlow.js toxicity model loaded");
-  return toxicityModel;
+  // Create the loading promise and store it
+  modelLoadPromise = toxicity.load(THRESHOLD, ['toxicity', 'identity_attack', 'insult', 'obscene', 'severe_toxicity', 'sexual_explicit', 'threat'])
+    .then(model => {
+      toxicityModel = model;
+      console.log("TensorFlow.js toxicity model loaded successfully");
+      return model;
+    })
+    .catch(error => {
+      console.error("Failed to load TensorFlow model:", error);
+      modelLoadPromise = null; // Clear the promise so we can try again
+      throw error;
+    });
+  
+  return modelLoadPromise;
 };
 
 /**
