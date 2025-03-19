@@ -1,6 +1,6 @@
 
 import { profanityList } from '@/data/profanityList';
-import { detectProfanity } from './aiProfanityDetection';
+import { detectProfanity, cleanTextWithAI } from './aiProfanityDetection';
 
 /**
  * Filters profanity words from text and replaces them with asterisks
@@ -94,8 +94,27 @@ export async function enhancedFilterProfanity(text: string): Promise<{
   // Then use AI-based detection
   const aiResult = await detectProfanity(text);
   
+  // If AI detected profanity but wordlist didn't catch all of it,
+  // use the AI to clean the text further
+  let finalFilteredText = wordlistResult.filteredText;
+  let finalMatches = [...wordlistResult.matches];
+  
+  if (aiResult.isProfane) {
+    // Apply AI cleaning to the text that's already been filtered by the wordlist
+    const aiCleanResult = await cleanTextWithAI(finalFilteredText);
+    
+    // Update the filtered text and matches
+    finalFilteredText = aiCleanResult.cleanedText;
+    finalMatches = [...finalMatches, ...aiCleanResult.replacedWords];
+    
+    // Remove duplicates
+    finalMatches = [...new Set(finalMatches)];
+  }
+  
   return {
-    ...wordlistResult,
+    filteredText: finalFilteredText,
+    wasFiltered: wordlistResult.wasFiltered || aiResult.isProfane,
+    matches: finalMatches,
     aiDetection: aiResult
   };
 }

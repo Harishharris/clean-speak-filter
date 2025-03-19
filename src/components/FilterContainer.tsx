@@ -82,6 +82,11 @@ const FilterContainer: React.FC = () => {
               {isModelLoading ? 'Loading AI Model...' : 'AI-Enhanced Filtering'}
             </TabsTrigger>
           </TabsList>
+          <div className="mt-2 text-xs text-muted-foreground">
+            {filterMethod === 'enhanced' && !isModelLoading ? 
+              "AI-Enhanced mode will actively replace profanity that our wordlist might miss" : 
+              "Wordlist mode uses a predefined list of words to filter content"}
+          </div>
         </Tabs>
         
         <TextFilterInput 
@@ -103,7 +108,7 @@ const FilterContainer: React.FC = () => {
           transition={{ delay: 0.5 }}
         >
           {filterMethod === 'enhanced' && !isModelLoading ? 
-            "Using TensorFlow.js AI model for enhanced profanity detection" : 
+            "Using TensorFlow.js AI model to detect and clean profanity" : 
             "Type text above to filter profanity and view the result"}
         </motion.div>
       </motion.div>
